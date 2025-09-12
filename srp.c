@@ -1,115 +1,152 @@
-/*
-Shift reduce parser
-
-Sample input for grammar:
-S -> (L) | a
-L -> L,S | S
-[THE PRODUCTIONS MUST BE ENTERED WITHOUT ANY SPACES]
-
-Enter no. of productions: 4
-Enter the productions:
-S=(L)
-S=a  
-L=L,S
-L=S
-Enter the input string: (a,(a,a))
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-char productions[10][20], input[20], stack[20];
-int input_ptr, stack_top, no_of_productions;
+char input[40], stack[40];
+int input_ptr, stack_top;
 
-void main()
-{
+// Grammar:
+// E -> T E'
+// E' -> + T E'
+// E' -> ε
+// T -> F T'
+// T' -> * F T'
+// T' -> ε
+// F -> ( E )
+// F -> id
+
+void print_action(char* action) {
+    printf("%-20s%-20s%-20s\n", stack, input + input_ptr, action);
+}
+
+int try_reduce() {
+    int len = stack_top + 1;
+    
+    // Check all possible reductions in order of preference
+    
+    // F -> id
+    if (len >= 2 && stack[stack_top-1] == 'i' && stack[stack_top] == 'd') {
+        stack_top -= 2;
+        stack[++stack_top] = 'F';
+        stack[stack_top + 1] = '\0';
+        print_action("Reduce F->id");
+        return 1;
+    }
+    
+    // F -> (E)
+    if (len >= 3 && stack[stack_top-2] == '(' && stack[stack_top-1] == 'E' && stack[stack_top] == ')') {
+        stack_top -= 3;
+        stack[++stack_top] = 'F';
+        stack[stack_top + 1] = '\0';
+        print_action("Reduce F->(E)");
+        return 1;
+    }
+    
+    // T' -> *FT'
+    if (len >= 3 && stack[stack_top-2] == '*' && stack[stack_top-1] == 'F' && stack[stack_top] == '\'') {
+        stack_top -= 3;
+        stack[++stack_top] = '\'';
+        stack[stack_top + 1] = '\0';
+        print_action("Reduce T'->*FT'");
+        return 1;
+    }
+    
+    // T' -> ε (when we have F and need to make it part of T)
+    if (len >= 1 && stack[stack_top] == 'F' && 
+        (input[input_ptr] == '+' || input[input_ptr] == '$' || input[input_ptr] == ')')) {
+        stack[++stack_top] = '\'';
+        stack[stack_top + 1] = '\0';
+        print_action("Reduce T'->ε");
+        return 1;
+    }
+    
+    // T -> FT'
+    if (len >= 2 && stack[stack_top-1] == 'F' && stack[stack_top] == '\'') {
+        stack_top -= 2;
+        stack[++stack_top] = 'T';
+        stack[stack_top + 1] = '\0';
+        print_action("Reduce T->FT'");
+        return 1;
+    }
+    
+    // E' -> +TE'
+    if (len >= 3 && stack[stack_top-2] == '+' && stack[stack_top-1] == 'T' && stack[stack_top] == '\'') {
+        stack_top -= 3;
+        stack[++stack_top] = '\'';
+        stack[stack_top + 1] = '\0';
+        print_action("Reduce E'->+TE'");
+        return 1;
+    }
+    
+    // E' -> ε (when we have T and input is $ or ))
+    if (len >= 1 && stack[stack_top] == 'T' && 
+        (input[input_ptr] == '$' || input[input_ptr] == ')')) {
+        stack[++stack_top] = '\'';
+        stack[stack_top + 1] = '\0';
+        print_action("Reduce E'->ε");
+        return 1;
+    }
+    
+    // E -> TE'
+    if (len >= 2 && stack[stack_top-1] == 'T' && stack[stack_top] == '\'') {
+        stack_top -= 2;
+        stack[++stack_top] = 'E';
+        stack[stack_top + 1] = '\0';
+        print_action("Reduce E->TE'");
+        return 1;
+    }
+    
+    return 0;
+}
+
+int main() {
     input_ptr = 0;
     stack_top = -1;
-
-    printf("Enter no. of productions: ");
-    scanf("%d", &no_of_productions);
-    printf("Enter the productions:\n");
-    for (int i = 0; i < no_of_productions; i++)
-        scanf("%s", productions[i]);
+    
+    printf("Grammar:\n");
+    printf("E -> T E'\n");
+    printf("E' -> + T E'\n");
+    printf("E' -> ε\n");
+    printf("T -> F T'\n");
+    printf("T' -> * F T'\n");
+    printf("T' -> ε\n");
+    printf("F -> ( E )\n");
+    printf("F -> id\n\n");
+    
     printf("Enter the input string: ");
     scanf("%s", input);
-    printf("%-20s%-20s%-20s\n", "Stack", "Input", "Action");
-
-    // The loop runs only if either reduction can be done with stack content, or shifting can be done with input
-    int shift, reduce;
-    do
-    {
-        // Variables shift and reduce is set to 1 if any of the operations can be done
-        shift = 0;
-        reduce = 1;
-
-        // Accept the string if bottom of the stack contains only the starting symbol and the input buffer is empty
-        if (stack[0] == productions[0][0] && strlen(stack) == 1 && input[strlen(input) - 1] == ' ')
-        {
-            printf("String accepted.\n");
-            exit(0);
-        }
-
-        int i;
-        for (i = 0; i < no_of_productions; i++)
-        {
-            reduce = 1;
-            
-            /*
-            Loop to check if the stack contents match the RHS of any production
-            Stack iterations: Starting point - stack top; Ending point - bottom of the stack (index 0) (worst case)
-            The stack iterations run as long as there are enough characters to process in the RHS of the production
-            k >= 2: The RHS of the production begins at index 2
-            After match, variable i will contain the index of the production
-            */
-            for (int j = stack_top, k = strlen(productions[i]) - 1; j >= 0, k >= 2; j--, k--)
-            {
-                // Character mismatch; no reduction
-                if (stack[j] != productions[i][k])
-                    reduce = 0;
-            }
-
-            if (reduce == 1)
-                break;
-        }
-
-        if (reduce == 1)
-        {
-            int j, k;
-
-            // Move to the index of the first symbol in the set of matched symbols in the stack
-            for (j = stack_top, k = strlen(productions[i]) - 1; j >= 0, k >= 2; j--, k--)
-                ;
-
-            // Replace the first symbol with the starting symbol of the production 
-            // j + 1: After running the above loop, j points to one less than the postion we need to access
-            stack[j + 1] = productions[i][0];
-
-            // Replace the next character to \0 to mark the end of the stack (To avoid unnecessary code for stack content deletion)
-            stack[j + 2] = '\0';
-
-            // Decrement stack top with the number of characters reduced
-            // -2: First two characters of the production are not processed (Starting symbol of the production and '=')
-            // -1: To match zero-indexing
-            stack_top -= strlen(productions[i]) - 2 - 1;
-
-            printf("%-20s%-20sReduce to %s\n", stack, input, productions[i]);
-        }
-        else
-        {
-            if (input[input_ptr] != '\0')
-            {
-                shift = 1;
-                stack_top++;
-                stack[stack_top] = input[input_ptr];
-                stack[stack_top + 1] = '\0';
-                input[input_ptr] = ' ';
-                input_ptr++;
-                printf("%-20s%-20s%-20s\n", stack, input, "Shift");
+    strcat(input, "$");
+    
+    printf("\n%-20s%-20s%-20s\n", "Stack", "Input", "Action");
+    printf("%-20s%-20s%-20s\n", "", input, "Initial");
+    
+    while (1) {
+        // Try to reduce as much as possible
+        while (try_reduce()) {
+            // Check for acceptance after each reduction
+            if (stack_top == 0 && stack[0] == 'E' && input[input_ptr] == '$') {
+                printf("\nString ACCEPTED!\n");
+                return 0;
             }
         }
-    } while (shift == 1 || reduce == 1);
-
-    printf("String rejected.\n");
+        
+        // Check for acceptance
+        if (stack_top == 0 && stack[0] == 'E' && input[input_ptr] == '$') {
+            printf("\nString ACCEPTED!\n");
+            return 0;
+        }
+        
+        // If we can't reduce and input is finished, reject
+        if (input[input_ptr] == '$') {
+            printf("\nString REJECTED!\n");
+            return 0;
+        }
+        
+        // Shift
+        stack[++stack_top] = input[input_ptr++];
+        stack[stack_top + 1] = '\0';
+        print_action("Shift");
+    }
+    
+    return 0;
 }
