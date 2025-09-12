@@ -1,40 +1,9 @@
-/*
-
-Recursive descent parser for a given grammar
-
-Grammar -
-E -> E + T | T
-T -> T * F | F
-F -> (E) | id
-
-Recursive descent parsers do not support left recursive grammar.
-Left recursion must be removed before implementing the grammar in the program.
-
-Steps to remove left recursion - 
-A Grammar G (V, T, P, S) is left recursive if it has a production in the form:
-A → Aα | β
-
-Eliminate left recursion by replacing the production with:
-A → βA′
-A′ → αA′| ε
-
-New grammar -
-E -> TE'
-E' -> +TE' | ε
-T -> FT'
-T' -> *FT' | ε
-F -> (E) | id
-
-a, (a), a+(a*a), a+a*a , a+a+a*a+a - accepted
-a++a, a***a, +a, a*, ((a - rejected
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
-char input[10];
+char input[100];   // increased size for longer expressions
 int i = 0, valid = 1;
 
 void E();
@@ -87,12 +56,18 @@ void F()
             valid = 0;
     }
     else if (isalnum(input[i]))
-        i++;
+    {
+        // Consume a full identifier (multi-character id allowed)
+        while (isalnum(input[i]))
+            i++;
+    }
     else
+    {
         valid = 0;
+    }
 }
 
-void main()
+int main()
 {
     printf("Enter input string: ");
     scanf("%s", input);
@@ -103,4 +78,6 @@ void main()
         printf("Accepted.\n");
     else  
         printf("Rejected.\n");
+
+    return 0;
 }
