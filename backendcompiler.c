@@ -4,19 +4,16 @@
 
 void generate_assembly(char *line) {
     char result[10], operand1[10], operator, operand2[10];
-    
-    // Parse three-address code: result = operand1 operator operand2
+
     if (sscanf(line, "%s = %s %c %s", result, operand1, &operator, operand2) == 4) {
-        printf("\t; %s\n", line);  // Comment with original line
+        printf("\t; %s\n", line);  
         
-        // Load first operand into AX register
         if (isalpha(operand1[0])) {
             printf("\tMOV AX, [%s]\n", operand1);
         } else {
             printf("\tMOV AX, %s\n", operand1);
         }
         
-        // Perform operation with second operand
         switch (operator) {
             case '+':
                 if (isalpha(operand2[0])) {
@@ -44,7 +41,7 @@ void generate_assembly(char *line) {
                 break;
                 
             case '/':
-                printf("\tMOV DX, 0\n");  // Clear DX for division
+                printf("\tMOV DX, 0\n");
                 if (isalpha(operand2[0])) {
                     printf("\tMOV BX, [%s]\n", operand2);
                 } else {
@@ -54,11 +51,10 @@ void generate_assembly(char *line) {
                 break;
         }
         
-        // Store result
         printf("\tMOV [%s], AX\n", result);
         printf("\n");
     }
-    // Handle simple assignment: result = operand
+
     else if (sscanf(line, "%s = %s", result, operand1) == 2) {
         printf("\t; %s\n", line);
         if (isalpha(operand1[0])) {
@@ -69,7 +65,6 @@ void generate_assembly(char *line) {
         }
         printf("\n");
     }
-    // Handle jump instructions
     else if (strncmp(line, "if", 2) == 0) {
         char var1[10], op[3], var2[10], label[10];
         if (sscanf(line, "if %s %s %s goto %s", var1, op, var2, label) == 4) {
@@ -93,7 +88,6 @@ void generate_assembly(char *line) {
             printf("\n");
         }
     }
-    // Handle unconditional jump
     else if (strncmp(line, "goto", 4) == 0) {
         char label[10];
         if (sscanf(line, "goto %s", label) == 1) {
@@ -102,7 +96,6 @@ void generate_assembly(char *line) {
             printf("\n");
         }
     }
-    // Handle labels
     else if (line[strlen(line) - 1] == ':') {
         printf("%s\n", line);
     }
@@ -110,15 +103,20 @@ void generate_assembly(char *line) {
 
 int main() {
     int n;
-    char line[100];
+    char line[100][100]; 
     
     printf("Enter number of three-address code lines: ");
     scanf("%d", &n);
-    getchar(); // consume newline
+    getchar();
     
     printf("Enter the three-address code:\n");
     
-    // Print assembly header
+    for (int i = 0; i < n; i++) {
+        fgets(line[i], sizeof(line[i]), stdin);
+        line[i][strcspn(line[i], "\n")] = 0; 
+    }
+
+
     printf("\n8086 Assembly Code:\n");
     printf(".MODEL SMALL\n");
     printf(".DATA\n");
@@ -127,22 +125,21 @@ int main() {
     printf("MAIN PROC\n");
     printf("\tMOV AX, @DATA\n");
     printf("\tMOV DS, AX\n\n");
-    
-    // Process each line
+
+
     for (int i = 0; i < n; i++) {
-        fgets(line, sizeof(line), stdin);
-        line[strcspn(line, "\n")] = 0; // remove newline
-        
-        if (strlen(line) > 0) {
-            generate_assembly(line);
+        if (strlen(line[i]) > 0) {
+            generate_assembly(line[i]);
         }
     }
-    
-    // Print assembly footer
+
     printf("\tMOV AH, 4CH\n");
     printf("\tINT 21H\n");
     printf("MAIN ENDP\n");
     printf("END MAIN\n");
-    
+
     return 0;
 }
+
+
+
